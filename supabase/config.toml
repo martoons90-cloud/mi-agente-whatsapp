@@ -1,0 +1,10 @@
+
+# supabase/config.toml
+
+# Configuración para la función 'chat'
+[functions.chat]
+  import_map = "./import_map.json"
+
+# Configuración para la función 'process-csv'
+[functions.process-csv]
+  import_map = "./import_map.json"
