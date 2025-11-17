@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { supabase } from '../supabaseClient'; // ¡Importante! Necesitamos esto para llamar a la función.
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
 import { Box, TextField, Button, Paper, Typography, List, ListItem, ListItemText, CircularProgress, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 
@@ -9,33 +9,40 @@ function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const listEndRef = useRef(null);
+
+  useEffect(() => {
+    // Desplazar al final de la lista de mensajes cuando se actualiza
+    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const userMessage = { from: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input; // Guardamos el input actual antes de limpiarlo
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    const currentInput = input;
     setInput('');
     setLoading(true);
 
     try {
-      // --- ¡CAMBIO CLAVE! ---
-      // Leemos el ID del cliente desde el almacenamiento local.
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) {
-        // Si no hay cliente configurado, no podemos continuar.
-        throw new Error("No se ha configurado una cuenta de cliente. Por favor, ve a la sección 'Cuenta del Agente' para configurarla.");
-      }
-
-      // --- ESTA ES LA PARTE NUEVA ---
-      // Llamamos a la Edge Function 'chat' que creamos
+      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
+      const botConfigId = session.user.id;
+      
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
-          query: currentInput,
-          history: messages, // <-- AÑADIMOS EL HISTORIAL DE LA CONVERSACIÓN
-          clientId: clientId // <-- ¡Y AÑADIMOS EL ID DEL CLIENTE!
+          // Ajustamos el cuerpo para que coincida con lo que espera la función 'chat'
+          message: currentInput,
+          // Para este chat de prueba, podemos usar el ID del negocio como ID de sesión
+          sessionId: botConfigId, 
+          // El ID del negocio que contiene la configuración
+          clientId: botConfigId,
+          // Pasamos el historial real de la conversación del chat de prueba
+          history: messages,
         },
       });
 
@@ -43,12 +50,15 @@ function Chat() {
         throw error;
       }
 
-      // Usamos la respuesta real de la IA
-      const botMessage = { from: 'bot', text: data.response };
-      setMessages(prev => [...prev, botMessage]);
+      // ¡CORRECCIÓN! Nos aseguramos de que la respuesta tenga el formato esperado.
+      if (data && data.reply) {
+        const botMessage = { from: 'bot', text: data.reply };
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        setMessages(prev => [...prev, { from: 'bot', text: 'No he recibido una respuesta válida.' }]);
+      }
 
     } catch (error) {
-      // Mostramos un error si algo falla
       const errorMessage = { from: 'bot', text: `Lo siento, tuve un problema: ${error.message}` };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -79,6 +89,7 @@ function Chat() {
             </ListItem>
           ))}
           {loading && <ListItem sx={{ justifyContent: 'flex-start' }}><CircularProgress size={20} /></ListItem>}
+          <div ref={listEndRef} />
         </List>
       </Paper>
       <Box component="form" onSubmit={handleSend} sx={{ display: 'flex', alignItems: 'center' }}>

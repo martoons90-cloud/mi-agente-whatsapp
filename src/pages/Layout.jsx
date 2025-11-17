@@ -17,12 +17,13 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import TopBar from './TopBar';
 
-const WEBSOCKET_URL = 'https://4mk9qqm3-8080.use.devtunnels.ms/';//'ws://localhost:8080';
+const WEBSOCKET_URL = 'ws://localhost:8080';
 
 const menuItems = [
   { text: 'Chat', icon: <ChatOutlinedIcon />, path: '/' },
   { text: 'Productos', icon: <Inventory2OutlinedIcon />, path: '/productos' },
   { text: 'WhatsApp', icon: <WhatsAppIcon />, path: '/whatsapp' }, // Conexión de WhatsApp
+  { text: 'Configuración', icon: <SettingsOutlinedIcon />, path: '/configuracion' },
 ];
 
 function Layout() {
@@ -74,7 +75,7 @@ function Layout() {
   }, []);
 
   return (
-    <Box sx={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex' }}>
       <CssBaseline />
       {/* Barra superior ahora es independiente y siempre de ancho completo */}
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, backgroundColor: 'grey.200', color: 'grey.800' }}>
@@ -139,10 +140,6 @@ function Layout() {
                   <ListItemIcon sx={{ color: 'white' }}><PeopleOutlineOutlinedIcon /></ListItemIcon>
                   <ListItemText primary="Configuración" />
                 </ListItemButton>
-                <ListItemButton sx={{ pl: 4, '&:hover': { bgcolor: 'primary.dark' } }} onClick={() => navigate('/configuracion')}>
-                  <ListItemIcon sx={{ color: 'white' }}><SettingsOutlinedIcon /></ListItemIcon>
-                  <ListItemText primary="Info del Negocio" />
-                </ListItemButton>
               </List>
             </Collapse>
           </List>
@@ -178,7 +175,8 @@ function Layout() {
           p: 3,
           bgcolor: 'background.default',
           height: '100vh', // Ocupa toda la altura de la ventana
-          overflow: 'auto', // Permite el scroll DENTRO del área de contenido
+          overflowY: 'auto', // Permite el scroll vertical
+          overflowX: 'hidden', // Oculta el scroll horizontal
           // ¡AQUÍ LA MAGIA! Añadimos un borde rojo para delimitar el área de trabajo.
           border: '2px dashed red',
         }}>

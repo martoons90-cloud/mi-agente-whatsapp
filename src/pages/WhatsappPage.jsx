@@ -16,6 +16,7 @@ function WhatsappPage() {
   const [connectedNumber, setConnectedNumber] = useState(null);
 
   const { lastMessage, readyState, sendMessage } = useWebSocket(SOCKET_URL, {
+    share: true, // <-- ¡CORRECCIÓN CLAVE! Usamos la conexión compartida.
     shouldReconnect: () => true,
     reconnectInterval: 3000,
   });
@@ -109,8 +110,7 @@ function WhatsappPage() {
   };
 
   return (
-    <Paper sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, maxWidth: 500, margin: 'auto' }}>
-      <Typography variant="h4" component="h1">Conexión de WhatsApp</Typography>
+    <Paper sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
       
       <Stack direction="row" spacing={1} alignItems="center">
         <Typography variant="body1">Estado del Gateway:</Typography>

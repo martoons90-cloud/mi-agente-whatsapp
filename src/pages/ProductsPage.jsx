@@ -14,22 +14,54 @@ function ProductsPage() {
 
   const handleSaveProduct = async (productData) => {
     try {
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) {
-        throw new Error("No se ha configurado una cuenta de cliente. Ve a 'Cuenta del Agente'.");
+      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
+      const clientId = session.user.id;
+
+      // 1. Generar el embedding del producto
+      // ¡MEJORA! Añadimos etiquetas para darle más contexto al modelo de embeddings.
+      // Esto ayuda a la IA a diferenciar entre el nombre y la descripción, mejorando la precisión de la búsqueda.
+      const textToEmbed = `Nombre del producto: ${productData.name}. Descripción: ${productData.description || 'Sin descripción'}. Se vende por: ${productData.unit}.`.trim();
+      console.log("Paso 1: Intentando invocar la función 'generate-embedding' con el texto:", textToEmbed);
+
+      const { data: embeddingData, error: embeddingError } = await supabase.functions.invoke('generate-embedding', {
+        body: { text: textToEmbed },
+      });
+
+      console.log("Paso 2: Respuesta recibida de la función.", { embeddingData, embeddingError });
+      if (embeddingError) {
+        // Intenta obtener un mensaje de error más detallado del cuerpo de la respuesta
+        const errorDetails = embeddingError.context?.error?.message || embeddingError.message;
+        console.error("Error detallado de la función 'generate-embedding':", embeddingError);
+        throw new Error(`Error al generar el embedding: ${errorDetails}`);
       }
 
+      console.log("Paso 3: Embedding generado correctamente. Preparando para insertar en la base de datos.");
+      const productToInsert = {
+        ...productData,
+        client_id: clientId,
+        embedding: embeddingData.embedding, // <-- Añadimos el embedding
+      };
+
+      // ¡LOG DE DEPURACIÓN CRÍTICO!
+      // Esto nos mostrará en la consola del navegador el objeto exacto que se va a guardar.
+      // Revisa si la propiedad "embedding" tiene un array de números o si es null.
+      console.log("Paso 4: Insertando el siguiente producto:", productToInsert);
+      // 2. Insertar el producto con su embedding
       const { error } = await supabase
         .from('products')
-        .insert([{ ...productData, client_id: clientId }]); // <-- AÑADIMOS EL client_id
+        .insert([productToInsert]);
 
       if (error) {
         throw new Error(`Error de Supabase: ${error.message}`);
       }
 
       setSnackbar({ open: true, message: '¡Producto agregado con éxito!', severity: 'success' });
+      console.log("Paso 5: Producto guardado con éxito.");
       setTableKey(prevKey => prevKey + 1); // Forzar recarga de la tabla
     } catch (error) {
+      console.error("FLUJO INTERRUMPIDO: Ocurrió un error en handleSaveProduct:", error);
       setSnackbar({ open: true, message: `Error al agregar el producto: ${error.message}`, severity: 'error' });
     }
   };

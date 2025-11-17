@@ -8,6 +8,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import LogoutIcon from '@mui/icons-material/Logout';
+import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { supabase } from '../supabaseClient';
 
 const handleLogout = async () => {
@@ -15,8 +16,15 @@ const handleLogout = async () => {
   // El onAuthStateChange en App.jsx se encargará de la redirección.
 };
 
-function TopBar({ connectionStatus, whatsAppUserData, authUserData }) {
+const roleLabels = {
+  product_seller: 'Vendedor de Productos',
+  appointment_scheduler: 'Agendador de Turnos',
+  real_estate: 'Agente Inmobiliario',
+};
+
+function TopBar({ connectionStatus, whatsAppUserData, authUserData, agentRole }) {
   const isConnected = connectionStatus === 'authenticated';
+  const roleLabel = agentRole ? roleLabels[agentRole] : 'No definido';
 
   return (
     // ¡CAMBIO! Toolbar más delgado
@@ -52,6 +60,17 @@ function TopBar({ connectionStatus, whatsAppUserData, authUserData }) {
           size="small"
           sx={{ mx: 2 }}
         />
+
+        {/* ¡NUEVO! Mostramos el rol activo del agente */}
+        {agentRole && (
+          <Chip
+            icon={<WorkOutlineIcon />}
+            label={roleLabel}
+            variant="filled"
+            size="small"
+            color="primary"
+          />
+        )}
 
         {authUserData && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -1,38 +1,42 @@
 // src/pages/SettingsPage.jsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient'; // <-- ¡CORRECCIÓN IMPORTANTE!
-import { Typography, Box, Paper, TextField, Button, CircularProgress, Alert, Stack } from '@mui/material';
+import {
+  Typography, Box, Paper, TextField, Button, CircularProgress, Alert, Stack, Snackbar,
+} from '@mui/material';
 
 function SettingsPage() {
   const [info, setInfo] = useState({ name: '', address: '', hours: '', phone: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [isNewInfo, setIsNewInfo] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     async function fetchInfo() {
       setLoading(true);
+      setError('');
       try {
-        const clientId = localStorage.getItem('clientId');
-        if (!clientId) {
-          setError("No se ha configurado una cuenta de cliente. Ve a 'Cuenta del Agente' primero.");
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setError("No hay una sesión activa. Por favor, inicia sesión.");
           setLoading(false);
           return;
         }
-
+        const currentUserId = session.user.id;
+ 
         const { data, error } = await supabase
           .from('business_info')
           .select('*')
-          .eq('client_id', clientId)
+          .eq('client_id', currentUserId)
           .limit(1)
           .single();
-
+ 
         if (error && error.code !== 'PGRST116') throw error; // Ignorar error si no encuentra la fila
-
+ 
         if (data) setInfo(data);
         else setIsNewInfo(true); // Si no hay datos, es para crear
-
+ 
       } catch (err) {
         setError(`Error al cargar la información: ${err.message}`);
       } finally {
@@ -41,28 +45,28 @@ function SettingsPage() {
     }
     fetchInfo();
   }, []);
-
+ 
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
     setInfo(prev => ({ ...prev, [name]: value }));
   };
-
+ 
   const handleSaveInfo = async () => {
     setLoading(true);
     setError('');
-    setSuccess('');
     try {
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) throw new Error("No se encontró el ID del cliente.");
-
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("No hay una sesión activa.");
+      const currentUserId = session.user.id;
+ 
       const infoData = {
-        client_id: clientId,
+        client_id: currentUserId,
         name: info.name,
         address: info.address,
         hours: info.hours,
         phone: info.phone,
       };
-
+ 
       if (isNewInfo) {
         // Crear nueva información
         const { error } = await supabase.from('business_info').insert([infoData]);
@@ -71,21 +75,17 @@ function SettingsPage() {
       } else {
         // Actualizar información existente
         const { client_id, ...updateData } = infoData; // No se puede actualizar la columna client_id
-        const { error } = await supabase.from('business_info').update(updateData).eq('client_id', clientId);
+        const { error } = await supabase.from('business_info').update(updateData).eq('client_id', currentUserId);
         if (error) throw error;
       }
-      setSuccess('¡Información del comercio guardada con éxito!');
+      setSnackbar({ open: true, message: '¡Información del comercio guardada con éxito!', severity: 'success' });
     } catch (err) {
-      setError(`Error al guardar: ${err.message}`);
+      setSnackbar({ open: true, message: `Error al guardar: ${err.message}`, severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
-
-  if (loading && !info.name) {
-    return <CircularProgress />;
-  }
-
+ 
   return (
     <>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -93,9 +93,9 @@ function SettingsPage() {
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      <Paper sx={{ p: 3, mb: 4 }}>
+      {!loading && (
+        <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" gutterBottom>Información del Comercio</Typography>
         <Stack spacing={2}>
           <TextField label="Nombre del Comercio" name="name" value={info.name} onChange={handleInfoChange} fullWidth />
@@ -108,9 +108,19 @@ function SettingsPage() {
             </Button>
           </Box>
         </Stack>
-      </Paper>
+        </Paper>
+      )}
 
-      {/* La gestión de ofertas y pagos se moverá a sus propias secciones */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

@@ -13,6 +13,7 @@ import OfertasPage from './pages/OfertasPage.jsx'; // Nueva página
 import PagosPage from './pages/PagosPage.jsx';   // Nueva página
 import AgentAccountPage from './pages/AgentAccountPage.jsx'; // <-- Página de cuenta del agente
 import WhatsappPage from './pages/WhatsappPage.jsx'; // <-- Nueva página de conexión
+import PromptPage from './pages/PromptPage.jsx'; // <-- ¡NUEVA PÁGINA!
 import LoginPage from './pages/LoginPage.jsx'; // <-- ¡NUEVO! Importamos la página de login
 import RegisterPage from './pages/RegisterPage.jsx'; // <-- ¡NUEVO! Importamos la página de registro
 
@@ -61,6 +62,7 @@ function App() {
                 <Route path="productos" element={<ProductsPage />} />
                 <Route path="ventas/ofertas" element={<OfertasPage />} />
                 <Route path="cuenta-agente" element={<AgentAccountPage />} />
+                <Route path="prompt" element={<PromptPage />} />
                 <Route path="whatsapp" element={<WhatsappPage />} />
                 <Route path="ventas/pagos" element={<PagosPage />} />
                 <Route path="configuracion" element={<SettingsPage />} />

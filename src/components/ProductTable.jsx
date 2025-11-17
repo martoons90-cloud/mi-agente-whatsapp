@@ -20,17 +20,17 @@ function ProductTable() {
     try {
       setLoading(true);
       setError(null);
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) {
-        setError("No se ha configurado una cuenta de cliente. Ve a 'Cuenta del Agente' primero.");
+      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setError("No hay una sesión activa. Por favor, inicia sesión.");
         setLoading(false);
         return;
       }
-
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('client_id', clientId) // <-- FILTRAMOS POR CLIENTE
+        .eq('client_id', session.user.id) // <-- Usamos el ID de la sesión
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -115,6 +115,7 @@ function ProductTable() {
               <TableCell>Nombre</TableCell>
               <TableCell>Descripción</TableCell>
               <TableCell align="right">Precio</TableCell>
+              <TableCell>Unidad</TableCell>
               <TableCell align="right">Stock</TableCell>
               <TableCell align="center">Activo</TableCell>
               <TableCell align="center">Acciones</TableCell>
@@ -127,6 +128,7 @@ function ProductTable() {
                 <TableCell>{product.name}</TableCell>
                 <TableCell>{product.description}</TableCell>
                 <TableCell align="right">${product.price?.toFixed(2)}</TableCell>
+                <TableCell>{product.unit}</TableCell>
                 <TableCell align="right">{product.stock}</TableCell>
                 <TableCell align="center">
                   <Switch

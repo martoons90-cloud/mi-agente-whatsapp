@@ -16,17 +16,17 @@ function PaymentMethodsTable({ keyProp, onEdit }) {
   async function fetchMethods() {
     try {
       setLoading(true);
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) {
-        setError("No se ha configurado una cuenta de cliente. Ve a 'Cuenta del Agente' primero.");
+      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setError("No hay una sesión activa. Por favor, inicia sesión.");
         setLoading(false);
         return;
       }
-
       const { data, error } = await supabase
         .from('payment_methods')
         .select('*')
-        .eq('client_id', clientId) // <-- FILTRAMOS POR CLIENTE
+        .eq('client_id', session.user.id) // <-- Usamos el ID de la sesión
         .order('id', { ascending: true });
 
       if (error) throw error;
