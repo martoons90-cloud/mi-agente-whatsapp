@@ -3,15 +3,18 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch,
-  Paper, IconButton, CircularProgress, Box, Typography, Alert
+  Paper, IconButton, CircularProgress, Box, Typography, Alert,
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-function OffersTable() {
+function OffersTable({ onEdit, onRefresh }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState(null);
 
   async function fetchOffers() {
     try {
@@ -40,7 +43,7 @@ function OffersTable() {
 
   useEffect(() => {
     fetchOffers();
-  }, []);
+  }, [onRefresh]); // Se recarga cuando el padre lo indica
 
   const handleToggleActive = async (offer) => {
     try {
@@ -57,6 +60,29 @@ function OffersTable() {
       ));
     } catch (err) {
       setError(`Error al cambiar el estado: ${err.message}`);
+    }
+  };
+
+  const openDeleteDialog = (offer) => {
+    setOfferToDelete(offer);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setOfferToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!offerToDelete) return;
+    try {
+      const { error } = await supabase.from('offers').delete().eq('id', offerToDelete.id);
+      if (error) throw error;
+      onRefresh(); // Llama a la función para recargar la tabla
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      closeDeleteDialog();
     }
   };
 
@@ -98,10 +124,10 @@ function OffersTable() {
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => alert('Función de editar no implementada aún.')}>
+                  <IconButton size="small" onClick={() => onEdit(offer)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton size="small" onClick={() => alert('Función de eliminar no implementada aún.')}>
+                  <IconButton size="small" onClick={() => openDeleteDialog(offer)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -110,6 +136,20 @@ function OffersTable() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Diálogo de Confirmación para Eliminar */}
+      <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog}>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Estás seguro de que quieres eliminar la oferta "{offerToDelete?.title}"? Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog}>Cancelar</Button>
+          <Button onClick={handleDelete} color="error" autoFocus>Eliminar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

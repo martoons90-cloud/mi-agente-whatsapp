@@ -15,7 +15,10 @@ import AgentAccountPage from './pages/AgentAccountPage.jsx'; // <-- Página de c
 import WhatsappPage from './pages/WhatsappPage.jsx'; // <-- Nueva página de conexión
 import PromptPage from './pages/PromptPage.jsx'; // <-- ¡NUEVA PÁGINA!
 import LoginPage from './pages/LoginPage.jsx'; // <-- ¡NUEVO! Importamos la página de login
+import ConnectionsPage from './pages/ConnectionsPage.jsx'; // <-- ¡NUEVA PÁGINA DE CONEXIONES!
 import RegisterPage from './pages/RegisterPage.jsx'; // <-- ¡NUEVO! Importamos la página de registro
+import AIChatPage from './pages/AIChatPage.jsx'; // <-- ¡NUEVA PÁGINA DE CHAT IA!
+import PaymentGatewaysPage from './pages/PaymentGatewaysPage.jsx'; // <-- ¡NUEVA PÁGINA!
 
 function App() {
   const [session, setSession] = useState(null);
@@ -59,6 +62,7 @@ function App() {
               {/* Si hay sesión, las rutas protegidas están dentro de Layout */}
               <Route path="/" element={<Layout />}>
                 <Route index element={<ChatPage />} />
+                <Route path="ia-chat" element={<AIChatPage />} />
                 <Route path="productos" element={<ProductsPage />} />
                 <Route path="ventas/ofertas" element={<OfertasPage />} />
                 <Route path="cuenta-agente" element={<AgentAccountPage />} />
@@ -66,6 +70,8 @@ function App() {
                 <Route path="whatsapp" element={<WhatsappPage />} />
                 <Route path="ventas/pagos" element={<PagosPage />} />
                 <Route path="configuracion" element={<SettingsPage />} />
+                <Route path="connections" element={<ConnectionsPage />} />
+              <Route path="payment-gateways" element={<PaymentGatewaysPage />} />
               </Route>
               {/* Si hay sesión y se intenta ir a /login, redirigir a la página principal */}
               <Route path="*" element={<Navigate to="/" />} />

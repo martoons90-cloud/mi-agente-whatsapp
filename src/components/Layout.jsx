@@ -13,14 +13,18 @@ import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'; // Este se mantiene relleno por ser un logo
 import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'; // Icono para el nuevo prompt
 import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
+import MonitorHeartOutlinedIcon from '@mui/icons-material/MonitorHeartOutlined';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import TopBar from './TopBar';
 
-const WEBSOCKET_URL = 'https://4mk9qqm3-8080.use.devtunnels.ms/';//'ws://localhost:8080';
+const WEBSOCKET_URL = 'ws://localhost:8080'; // <-- ¡CORRECCIÓN CLAVE! Conectar directamente al servidor local.
 
 const menuItems = [
-  { text: 'Chat', icon: <ChatOutlinedIcon />, path: '/' },
+  { text: 'Monitor de Chat', icon: <MonitorHeartOutlinedIcon />, path: '/' },
+  { text: 'Chat IA', icon: <SmartToyOutlinedIcon />, path: '/ia-chat' },
   { text: 'Productos', icon: <Inventory2OutlinedIcon />, path: '/productos' },
   { text: 'WhatsApp', icon: <WhatsAppIcon />, path: '/whatsapp' }, // Conexión de WhatsApp
 ];
@@ -135,9 +139,17 @@ function Layout() {
                   <ListItemIcon sx={{ color: 'white' }}><CreditCardOutlinedIcon /></ListItemIcon>
                   <ListItemText primary="Métodos de Pago" />
                 </ListItemButton>
+                <ListItemButton sx={{ pl: 4, '&:hover': { bgcolor: 'primary.dark' } }} onClick={() => navigate('/payment-gateways')}>
+                  <ListItemIcon sx={{ color: 'white' }}><AccountBalanceIcon /></ListItemIcon>
+                  <ListItemText primary="Pasarelas de Pago" />
+                </ListItemButton>
                 <ListItemButton sx={{ pl: 4, '&:hover': { bgcolor: 'primary.dark' } }} onClick={() => navigate('/cuenta-agente')}>
                   <ListItemIcon sx={{ color: 'white' }}><PeopleOutlineOutlinedIcon /></ListItemIcon>
                   <ListItemText primary="Configuración" />
+                </ListItemButton>
+                <ListItemButton sx={{ pl: 4, '&:hover': { bgcolor: 'primary.dark' } }} onClick={() => navigate('/connections')}>
+                  <ListItemIcon sx={{ color: 'white' }}><SettingsOutlinedIcon /></ListItemIcon>
+                  <ListItemText primary="Conexiones" />
                 </ListItemButton>
                 <ListItemButton sx={{ pl: 4, '&:hover': { bgcolor: 'primary.dark' } }} onClick={() => navigate('/configuracion')}>
                   <ListItemIcon sx={{ color: 'white' }}><SettingsOutlinedIcon /></ListItemIcon>
@@ -182,8 +194,8 @@ function Layout() {
           // ¡AQUÍ LA MAGIA! Añadimos un borde rojo para delimitar el área de trabajo.
           border: '2px dashed red',
         }}>
-        <Toolbar /> {/* Espaciador para que el contenido no quede debajo del TopBar */}
-        <Outlet />
+        <Toolbar />
+        <Outlet context={{ websocketUrl: WEBSOCKET_URL }} /> {/* Pasamos la URL al Outlet */}
       </Box>
     </Box>
   );

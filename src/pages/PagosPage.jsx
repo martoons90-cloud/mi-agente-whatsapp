@@ -18,10 +18,12 @@ function PagosPage() {
 
   const handleSaveMethod = async (methodData) => {
     try {
-      const clientId = localStorage.getItem('clientId');
-      if (!clientId) {
-        throw new Error("No se ha configurado una cuenta de cliente. Ve a 'Cuenta del Agente'.");
+      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado de forma segura desde la sesión.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
       }
+      const clientId = session.user.id;
 
       let error;
       if (methodData.id) {
@@ -32,7 +34,7 @@ function PagosPage() {
       } else {
         // Crear nuevo método
         const { id, ...insertData } = methodData; // Quitar el id si viene nulo
-        ({ error } = await supabase.from('payment_methods').insert([{ ...insertData, client_id: clientId }]));
+        ({ error } = await supabase.from('payment_methods').insert([{ ...insertData, client_id: clientId, is_active: true }]));
       }
 
       if (error) throw error;
