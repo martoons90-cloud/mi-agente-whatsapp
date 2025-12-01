@@ -1,20 +1,14 @@
-import React from 'react';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import { Box, IconButton, Tooltip } from '@mui/material';
-import Chip from '@mui/material/Chip';
+import { useState } from 'react';
+import { Toolbar, Typography, Box, IconButton, Tooltip, Chip, Menu, MenuItem, Button } from '@mui/material';
+import ClientSwitcherDialog from './ClientSwitcherDialog'; // <-- ¡NUEVO! Importamos el diálogo
 import AccountCircle from '@mui/icons-material/AccountCircle';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import LogoutIcon from '@mui/icons-material/Logout';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-
-const handleLogout = async () => {
-  await supabase.auth.signOut();
-  // El onAuthStateChange en App.jsx se encargará de la redirección.
-};
 
 const roleLabels = {
   product_seller: 'Vendedor de Productos',
@@ -22,7 +16,25 @@ const roleLabels = {
   real_estate: 'Agente Inmobiliario',
 };
 
-function TopBar({ connectionStatus, whatsAppUserData, authUserData, agentRole }) {
+function TopBar({ connectionStatus, whatsAppUserData, authUserData, agentRole, isAdmin, allClients, selectedClientId, onClientChange }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false); // <-- ¡NUEVO! Estado para el diálogo
+  const navigate = useNavigate();
+
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    handleClose();
+    navigate('/login'); // Redirigir explícitamente al login
+  };
+
   const isConnected = connectionStatus === 'authenticated';
   const roleLabel = agentRole ? roleLabels[agentRole] : 'No definido';
 
@@ -34,7 +46,6 @@ function TopBar({ connectionStatus, whatsAppUserData, authUserData, agentRole })
         Agente de WhatsApp
       </Typography>
 
-      {/* Contenedor para la información del usuario a la derecha */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         {isConnected && whatsAppUserData ? (
           <>
@@ -53,23 +64,37 @@ function TopBar({ connectionStatus, whatsAppUserData, authUserData, agentRole })
         )}
 
         <Chip
-          icon={isConnected ? <CheckCircleIcon /> : <ErrorIcon />}
+          icon={<CheckCircleIcon />}
           label={isConnected ? 'Conectado' : 'Desconectado'}
           color={isConnected ? 'success' : 'error'}
           variant="outlined"
           size="small"
-          sx={{ mx: 2 }}
         />
 
-        {/* ¡NUEVO! Mostramos el rol activo del agente */}
-        {agentRole && (
-          <Chip
-            icon={<WorkOutlineIcon />}
-            label={roleLabel}
-            variant="filled"
-            size="small"
-            color="primary"
-          />
+        {/* Botón para abrir el selector de cliente (movido a la derecha) */}
+        {isAdmin && (
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<SupervisorAccountIcon />}
+              onClick={() => setDialogOpen(true)}
+            >
+              Cambiar Cliente
+            </Button>
+            <ClientSwitcherDialog
+              open={dialogOpen}
+              onClose={() => setDialogOpen(false)}
+              allClients={allClients}
+              onConfirm={onClientChange}
+            />
+          </>
+        )}
+
+        {/* Indicador del cliente que se está viendo */}
+        {isAdmin && selectedClientId && authUserData?.id !== selectedClientId && (
+          <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'primary.main' }}>
+            Viendo: {allClients.find(c => c.id === selectedClientId)?.email || 'Cliente desconocido'}
+          </Typography>
         )}
 
         {authUserData && (

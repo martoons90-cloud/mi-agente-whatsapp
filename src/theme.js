@@ -32,4 +32,15 @@ export const theme = createTheme({
       fontSize: '1.1rem', // Antes era ~1.25rem
     },
   },
+  // ¡AQUÍ LA MAGIA! Sobreescribimos estilos de componentes globales.
+  components: {
+    // Apuntamos al componente de texto de los ítems de lista
+    MuiListItemText: {
+      styleOverrides: {
+        primary: { // Aplicamos el estilo al texto primario
+          fontWeight: 300, // Usamos una fuente ligera (light)
+        },
+      },
+    },
+  },
 });

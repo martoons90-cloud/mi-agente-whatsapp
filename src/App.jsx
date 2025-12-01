@@ -8,6 +8,7 @@ import { supabase } from './supabaseClient';
 import Layout from './components/Layout.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
+import BusinessInfoPage from './BusinessInfoPage.jsx'; // <-- ¡CORRECCIÓN! Apuntamos al archivo en la raíz de src
 import SettingsPage from './pages/SettingsPage.jsx';
 import OfertasPage from './pages/OfertasPage.jsx'; // Nueva página
 import PagosPage from './pages/PagosPage.jsx';   // Nueva página
@@ -15,10 +16,11 @@ import AgentAccountPage from './pages/AgentAccountPage.jsx'; // <-- Página de c
 import WhatsappPage from './pages/WhatsappPage.jsx'; // <-- Nueva página de conexión
 import PromptPage from './pages/PromptPage.jsx'; // <-- ¡NUEVA PÁGINA!
 import LoginPage from './pages/LoginPage.jsx'; // <-- ¡NUEVO! Importamos la página de login
-import ConnectionsPage from './pages/ConnectionsPage.jsx'; // <-- ¡NUEVA PÁGINA DE CONEXIONES!
 import RegisterPage from './pages/RegisterPage.jsx'; // <-- ¡NUEVO! Importamos la página de registro
 import AIChatPage from './pages/AIChatPage.jsx'; // <-- ¡NUEVA PÁGINA DE CHAT IA!
+import DashboardPage from './pages/DashboardPage.jsx'; // <-- ¡NUEVA PÁGINA DE DASHBOARD!
 import PaymentGatewaysPage from './pages/PaymentGatewaysPage.jsx'; // <-- ¡NUEVA PÁGINA!
+import CalendarPage from './components/CalendarPage.jsx'; // <-- ¡CORRECCIÓN! Apuntamos a la carpeta correcta.
 
 function App() {
   const [session, setSession] = useState(null);
@@ -61,6 +63,7 @@ function App() {
             <>
               {/* Si hay sesión, las rutas protegidas están dentro de Layout */}
               <Route path="/" element={<Layout />}>
+                <Route path="dashboard" element={<DashboardPage />} />
                 <Route index element={<ChatPage />} />
                 <Route path="ia-chat" element={<AIChatPage />} />
                 <Route path="productos" element={<ProductsPage />} />
@@ -69,8 +72,9 @@ function App() {
                 <Route path="prompt" element={<PromptPage />} />
                 <Route path="whatsapp" element={<WhatsappPage />} />
                 <Route path="ventas/pagos" element={<PagosPage />} />
-                <Route path="configuracion" element={<SettingsPage />} />
-                <Route path="connections" element={<ConnectionsPage />} />
+                <Route path="business-info" element={<BusinessInfoPage />} /> {/* <-- ¡CAMBIO! Ruta para Info del Negocio */}
+                <Route path="settings" element={<SettingsPage />} /> {/* <-- ¡NUEVO! Ruta para Configuración */}
+                <Route path="calendar" element={<CalendarPage />} /> {/* <-- NUEVA RUTA */}
               <Route path="payment-gateways" element={<PaymentGatewaysPage />} />
               </Route>
               {/* Si hay sesión y se intenta ir a /login, redirigir a la página principal */}

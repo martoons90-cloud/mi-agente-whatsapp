@@ -1,5 +1,6 @@
 // src/components/OffersTable.jsx
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch,
@@ -9,27 +10,23 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-function OffersTable({ onEdit, onRefresh }) {
+function OffersTable({ onEdit, tableKey }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [offerToDelete, setOfferToDelete] = useState(null);
+  const { selectedClientId } = useOutletContext(); // <-- ¡CAMBIO CLAVE!
 
   async function fetchOffers() {
     try {
       setLoading(true);
-      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setError("No hay una sesión activa. Por favor, inicia sesión.");
-        setLoading(false);
-        return;
-      }
+      if (!selectedClientId) return;
+
       const { data, error } = await supabase
         .from('offers')
         .select('*')
-        .eq('client_id', session.user.id) // <-- Usamos el ID de la sesión
+        .eq('client_id', selectedClientId) // <-- ¡CAMBIO CLAVE! Usamos el ID del cliente seleccionado
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -43,7 +40,7 @@ function OffersTable({ onEdit, onRefresh }) {
 
   useEffect(() => {
     fetchOffers();
-  }, [onRefresh]); // Se recarga cuando el padre lo indica
+  }, [tableKey, selectedClientId]); // ¡CORRECCIÓN! Solo se recarga cuando la key o el cliente cambian
 
   const handleToggleActive = async (offer) => {
     try {
@@ -78,7 +75,7 @@ function OffersTable({ onEdit, onRefresh }) {
     try {
       const { error } = await supabase.from('offers').delete().eq('id', offerToDelete.id);
       if (error) throw error;
-      onRefresh(); // Llama a la función para recargar la tabla
+      fetchOffers(); // Llama a la función para recargar la tabla directamente
     } catch (err) {
       setError(err.message);
     } finally {
@@ -100,12 +97,13 @@ function OffersTable({ onEdit, onRefresh }) {
         Ofertas Activas
       </Typography>
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Título</TableCell>
               <TableCell>Descripción</TableCell>
               <TableCell>Palabras Clave</TableCell>
+              <TableCell align="center">Vigencia</TableCell>
               <TableCell align="center">Activa</TableCell>
               <TableCell align="center">Acciones</TableCell>
             </TableRow>
@@ -117,9 +115,15 @@ function OffersTable({ onEdit, onRefresh }) {
                 <TableCell>{offer.description}</TableCell>
                 <TableCell>{offer.related_keywords}</TableCell>
                 <TableCell align="center">
+                  {offer.valid_until 
+                    ? new Date(offer.valid_until).toLocaleDateString('es-AR', { timeZone: 'UTC' }) 
+                    : 'Indefinida'}
+                </TableCell>
+                <TableCell align="center">
                   <Switch
                     checked={offer.is_active}
                     onChange={() => handleToggleActive(offer)}
+                    size="small"
                     color="secondary"
                   />
                 </TableCell>

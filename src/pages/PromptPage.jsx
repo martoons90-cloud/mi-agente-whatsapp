@@ -1,143 +1,123 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import {
-  Box, Button, TextField, Typography, Grid, Paper, Container,
-  List, ListItem, ListItemIcon, ListItemText, CircularProgress, Alert, Snackbar, Divider,
-  FormControl, InputLabel, Select, MenuItem, Accordion, AccordionSummary, AccordionDetails, Stack
+  Box, Button, TextField, Typography, Paper, Container, Stack,
+  CircularProgress, Alert, Snackbar,
+  FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, IconButton
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SaveIcon from '@mui/icons-material/Save';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
-const ADMIN_PASSWORD = "admin"; // Contraseña simple para desbloquear.
+const NEW_ROLE_PROMPT_TEMPLATE = `Tu única función es... Eres un asistente llamado Martin. Tu objetivo es guiar al cliente paso a paso.
 
-const agentRoles = [
-  { value: 'product_seller', label: 'Vendedor de Productos' },
-  { value: 'appointment_scheduler', label: 'Agendador de Turnos' },
-  { value: 'real_estate', label: 'Agente Inmobiliario' },
-];
+**FILOSOFÍA OBLIGATORIA: "UN DATO A LA VEZ"**
+No importa cuánta información te dé el cliente de golpe, tú SIEMPRE procesarás un solo dato a la vez.
 
-const roleLabels = {
-  product_seller: 'Vendedor de Productos',
-  appointment_scheduler: 'Agendador de Turnos',
-  real_estate: 'Agente Inmobiliario',
-};
+**PLAN DE ACCIÓN SECUENCIAL E INQUEBRANTABLE:**
 
-const DEFAULT_PROMPT = `Aquí puedes definir la personalidad y las reglas específicas de tu agente.
-- Por ejemplo: "Siempre saluda al cliente por su nombre si lo sabes."
-- O: "Ofrece un 5% de descuento en la primera compra."`.trim();
+**PASO 1: ...**
+*   Tu primera prioridad es...
+*   ACCIÓN: ...
+*   RESPUESTA: ...
+
+**PASO 2: ...**
+*   ...
+`;
 
 function PromptPage() {
-  const [userRequest, setUserRequest] = useState('');
-  const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [role, setRole] = useState('product_seller'); // <-- NUEVO: Estado para el rol
-  const [rolePrompts, setRolePrompts] = useState([]); // <-- NUEVO: Para los prompts base de cada rol
+  const [allRoles, setAllRoles] = useState([]);
+  const [currentRole, setCurrentRole] = useState('');
+  const [basePrompt, setBasePrompt] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingRole, setSavingRole] = useState({}); // <-- NUEVO: para el estado de guardado de cada rol
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const [isUnlocked, setIsUnlocked] = useState(false); // <-- NUEVO: Para el editor de roles
-  const [password, setPassword] = useState(''); // <-- NUEVO: Para la contraseña
-  const [initialLoad, setInitialLoad] = useState(true); // <-- NUEVO: Para controlar la carga inicial
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext();
 
+  // Estados para el diálogo de creación de rol
+  const [newRoleDialogOpen, setNewRoleDialogOpen] = useState(false);
+  const [newRoleData, setNewRoleData] = useState({ role_name: '', role_label: '' });
+
+  // Efecto para cargar los datos iniciales (lista de roles y rol actual del cliente)
   useEffect(() => {
-    async function fetchPrompt() {
+    async function fetchInitialData() {
+      if (!selectedClientId) return;
       setLoading(true);
       setError('');
-      try {        
-        // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
-        const currentUserId = session.user.id;
-
-        const { data, error } = await supabase
-          .from('clients') // <-- CORRECCIÓN: Leemos de la tabla 'clients'
-          .select('agent_config, role') // <-- Leemos también el rol
-          .eq('id', currentUserId) // <-- Usamos el ID del usuario
-          .single();
-
-        if (error && error.code !== 'PGRST116') throw error; // Ignorar si no encuentra la fila
-
-        if (data) {          
-          setGeneratedPrompt(data.agent_config?.prompt || DEFAULT_PROMPT);
-          setRole(data.role || 'product_seller'); // <-- Establecemos el rol
-        } else if (initialLoad) { // <-- CAMBIO: Solo usar el prompt por defecto en la carga inicial
-          setGeneratedPrompt(DEFAULT_PROMPT);
-        }
-      } catch (err) {
-        setError(`Error al cargar el prompt: ${err.message}`);
-      }
-
-      // Cargar los prompts base de todos los roles
       try {
-        const { data, error } = await supabase
+        // 1. Obtener todas las actividades/roles disponibles
+        const { data: rolesData, error: rolesError } = await supabase
           .from('role_prompts')
-          .select('*');
-        
-        if (error) throw error;
-        
-        setRolePrompts(data);
+          .select('role_name, role_label');
+        if (rolesError) throw rolesError;
+        setAllRoles(rolesData);
+
+        // 2. Obtener el rol actual del cliente
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('agent_role')
+          .eq('id', selectedClientId)
+          .single();
+        if (clientError) throw clientError;
+
+        const roleName = clientData?.agent_role || rolesData[0]?.role_name || '';
+        setCurrentRole(roleName);
+
       } catch (err) {
-        setError(prev => `${prev}\nError al cargar los prompts de rol: ${err.message}`);
+        setError(`Error al cargar datos iniciales: ${err.message}`);
+      } finally {
+        // El loading se setea a false en el siguiente useEffect
+      }
+    }
+    fetchInitialData();
+  }, [selectedClientId]);
+
+  // Efecto para cargar el prompt correspondiente cuando cambia el rol seleccionado
+  useEffect(() => {
+    async function fetchRolePrompt() {
+      if (!currentRole) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from('role_prompts')
+          .select('base_prompt')
+          .eq('role_name', currentRole)
+          .single();
+        if (roleError) throw roleError;
+        setBasePrompt(roleData?.base_prompt || 'No se encontró un prompt para este rol.');
+      } catch (err) {
+        setError(`Error al cargar el prompt para el rol: ${err.message}`);
       } finally {
         setLoading(false);
-        if (initialLoad) {
-          setInitialLoad(false); // <-- Marcar que la carga inicial ha terminado
-        }
       }
     }
-    fetchPrompt();
-  }, []);
-
-  const handleGeneratePrompt = async () => {
-    if (!userRequest) return;
-    setGenerating(true);
-    try {      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay una sesión activa.");
-      const clientId = session.user.id;
-      
-      // ¡Llamada a la nueva Edge Function!
-      const { data, error } = await supabase.functions.invoke('generate-prompt-rule', {
-        body: { userRequest, clientId },
-      });
-
-      if (error) throw error;
-
-      // Añadimos la regla generada por la IA al prompt actual
-      const newPrompt = `${generatedPrompt}\n${data.rule}`;
-      setGeneratedPrompt(newPrompt);
-      setUserRequest(''); // Limpiamos el input del usuario
-
-    } catch (err) {
-      setSnackbar({ open: true, message: `Error al generar la regla: ${err.message}`, severity: 'error' });
-    } finally {
-      setGenerating(false);
-    }
-  };
+    fetchRolePrompt();
+  }, [currentRole]);
 
   const handleSavePrompt = async () => {
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay una sesión activa.");
-      const clientId = session.user.id;
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
 
-      const { error } = await supabase
-        .from('clients') // <-- CORRECCIÓN: Guardamos en la tabla 'clients'
-        .update({ 
-          agent_config: { prompt: generatedPrompt }, role: role // <-- Guardamos también el rol
-        })
-        .eq('id', clientId);
+      // 1. Guardar el rol seleccionado en la tabla 'clients'
+      const { error: clientUpdateError } = await supabase
+        .from('clients')
+        .update({ agent_role: currentRole })
+        .eq('id', selectedClientId);
+      if (clientUpdateError) throw clientUpdateError;
 
-      if (error) throw error;
+      // 2. Guardar el prompt editado en la tabla 'role_prompts'
+      const { error: rolePromptError } = await supabase
+        .from('role_prompts')
+        .update({ base_prompt: basePrompt })
+        .eq('role_name', currentRole);
+      if (rolePromptError) throw rolePromptError;
 
-      setSnackbar({ open: true, message: '¡Prompt guardado con éxito!', severity: 'success' });
+      setSnackbar({ open: true, message: '¡Rol y comportamiento guardados con éxito!', severity: 'success' });
     } catch (err) {
       setSnackbar({ open: true, message: `Error al guardar el prompt: ${err.message}`, severity: 'error' });
     } finally {
@@ -145,191 +125,130 @@ function PromptPage() {
     }
   };
 
-  const handleUnlock = () => {
-    if (password === ADMIN_PASSWORD) {
-      setIsUnlocked(true);
-      setSnackbar({ open: true, message: 'Editor de roles desbloqueado.', severity: 'info' });
-      setError('');
-    } else {
-      setError('Contraseña incorrecta.');
-      setIsUnlocked(false);
+  // Función para guardar la nueva actividad/rol
+  const handleSaveNewRole = async () => {
+    if (!newRoleData.role_label) {
+      setSnackbar({ open: true, message: 'El nombre de la actividad es obligatorio.', severity: 'warning' });
+      return;
     }
-    setPassword('');
-  };
-
-  const handleRolePromptChange = (roleName, newPrompt) => {
-    setRolePrompts(prompts => 
-      prompts.map(p => p.role_name === roleName ? { ...p, base_prompt: newPrompt } : p)
-    );
-  };
-
-  const handleSaveRolePrompt = async (roleName) => {
-    const promptToSave = rolePrompts.find(p => p.role_name === roleName);
-    if (!promptToSave) return;
-
-    setSavingRole(prev => ({ ...prev, [roleName]: true }));
+    setSaving(true);
     try {
-      const { error } = await supabase
+      const roleNameInternal = newRoleData.role_label.toLowerCase().replace(/\s+/g, '_');
+      const { data, error } = await supabase
         .from('role_prompts')
-        .update({ base_prompt: promptToSave.base_prompt, updated_at: new Date() })
-        .eq('role_name', roleName);
-      
+        .insert({
+          role_name: roleNameInternal,
+          role_label: newRoleData.role_label,
+          base_prompt: NEW_ROLE_PROMPT_TEMPLATE,
+        })
+        .select()
+        .single();
+
       if (error) throw error;
-      setSnackbar({ open: true, message: `¡Comportamiento del rol "${roleLabels[roleName]}" guardado!`, severity: 'success' });
+
+      setSnackbar({ open: true, message: '¡Nueva actividad creada con éxito!', severity: 'success' });
+      setNewRoleDialogOpen(false);
+      setNewRoleData({ role_name: '', role_label: '' });
+
+      // Recargar la lista de roles y seleccionar el nuevo
+      const { data: rolesData, error: rolesError } = await supabase.from('role_prompts').select('role_name, role_label');
+      if (rolesError) throw rolesError;
+      setAllRoles(rolesData);
+      setCurrentRole(data.role_name);
+
     } catch (err) {
-      setSnackbar({ open: true, message: `Error al guardar el rol: ${err.message}`, severity: 'error' });
+      setSnackbar({ open: true, message: `Error al crear la actividad: ${err.message}`, severity: 'error' });
     } finally {
-      setSavingRole(prev => ({ ...prev, [roleName]: false }));
+      setSaving(false);
     }
   };
-
-  // Extraer las reglas del prompt para el resumen
-  const rules = generatedPrompt
-    ?.split('\n') // El '?' evita errores si generatedPrompt es nulo o indefinido
-    .filter(line => line.startsWith('-'))
-    .map(line => line.substring(1).trim());
 
   return (
-    <Container maxWidth={false} sx={{ px: { xs: 2, md: 3 } }}> {/* Ancho completo con padding controlado */}
+    <Container maxWidth={false} sx={{ px: { xs: 2, md: 3 } }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Configuración del Agente de Ventas
+        Configuración del Rol del Agente
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Define y refina la personalidad y las reglas de tu agente de IA. Usa el generador para añadir comportamientos o edita el prompt técnico directamente.
+        Selecciona la actividad principal de tu bot y edita su comportamiento base. Este prompt es el "cerebro" completo de tu agente para la actividad elegida.
       </Typography>
 
       {loading && <CircularProgress />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {!loading && !error && (
         <>
-          <Grid container spacing={3}>
-            {/* Columna Izquierda: Petición del Usuario */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <Typography variant="h6" gutterBottom>1. Pide un nuevo comportamiento (con tus palabras)</Typography>
-                <TextField
-                  label="Ej: 'Quiero que ofrezcas un 10% de descuento si el cliente compra más de 3 productos'"
-                  multiline
-                  rows={8}
-                  fullWidth
-                  value={userRequest}
-                  onChange={(e) => setUserRequest(e.target.value)}
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleGeneratePrompt}
-                  disabled={generating || !userRequest}
-                  startIcon={generating ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
-                  sx={{ mt: 2 }}
+          <Paper sx={{ p: 3 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 3 }}>
+              <FormControl fullWidth>
+                <InputLabel id="role-select-label">Actividad del Agente</InputLabel>
+                <Select
+                  labelId="role-select-label"
+                  value={currentRole}
+                  label="Actividad del Agente"
+                  onChange={(e) => setCurrentRole(e.target.value)}
                 >
-                  {generating ? 'Generando...' : 'Generar con IA'}
-                </Button>
-              </Paper>
-            </Grid>
-
-            {/* Columna Derecha: Prompt Generado */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <Typography variant="h6" gutterBottom>2. Prompt Técnico del Agente (editable)</Typography>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="role-select-label">Rol del Agente</InputLabel>
-                  <Select
-                    labelId="role-select-label"
-                    id="role-select"
-                    name="role"
-                    value={role}
-                    label="Rol del Agente"
-                    onChange={(e) => setRole(e.target.value)}
-                  >
-                    {agentRoles.map((r) => (
-                      <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField
-                  multiline
-                  rows={12}
-                  fullWidth
-                  value={generatedPrompt}
-                  onChange={(e) => setGeneratedPrompt(e.target.value)}
-                  helperText="Este es el prompt final que usará la IA. Puedes editarlo directamente."
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSavePrompt}
-                  disabled={saving}
-                  startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                  sx={{ mt: 2, alignSelf: 'flex-end' }}
-                >
-                  {saving ? 'Guardando...' : 'Guardar Prompt'}
-                </Button>
-              </Paper>
-            </Grid>
-          </Grid>
-
-          {/* Sección de Resumen de Comportamiento */}
-          <Paper sx={{ p: 2, mt: 4 }}>
-            <Typography variant="h6" gutterBottom>Resumen de Comportamientos y Reglas Actuales</Typography>
-            <List dense>
-              {rules.map((rule, index) => (
-                <ListItem key={index}>
-                  <ListItemIcon sx={{ minWidth: '32px' }}><CheckCircleOutlineIcon color="success" fontSize="small" /></ListItemIcon>
-                  <ListItemText primary={rule} />
-                </ListItem>
-              ))}
-            </List>
+                  {allRoles.map((r) => (
+                    <MenuItem key={r.role_name} value={r.role_name}>{r.role_label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <IconButton color="secondary" onClick={() => setNewRoleDialogOpen(true)} title="Crear Nueva Actividad">
+                <AddCircleOutlineIcon />
+              </IconButton>
+            </Stack>
+            <Typography variant="h6" gutterBottom>Edita el Comportamiento Base (Prompt)</Typography>
+            <TextField
+              multiline
+              rows={25}
+              fullWidth
+              value={basePrompt}
+              onChange={(e) => setBasePrompt(e.target.value)}
+              helperText="Este es el prompt completo que define la personalidad y las reglas del bot para la actividad seleccionada."
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSavePrompt}
+              disabled={saving || loading}
+              startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+              sx={{ mt: 2, float: 'right' }}
+            >
+              {saving ? 'Guardando...' : 'Guardar Rol y Comportamiento'}
+            </Button>
           </Paper>
         </>
       )}
 
-      <Divider sx={{ my: 4 }} />
-
-      {/* Editor de Roles (movido desde SettingsPage) */}
-      <Typography variant="h4" component="h1" gutterBottom>
-        Comportamiento Base de Roles
-      </Typography>
-      <Paper sx={{ p: 3 }}>
-        {!isUnlocked ? (
-          <Box>
-            <Typography variant="h6" gutterBottom>Desbloquear Editor de Roles</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Esta es una sección avanzada. Ingresa la contraseña de administrador para modificar el comportamiento base de cada rol.
-            </Typography>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <TextField
-                label="Contraseña de Administrador"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleUnlock()}
-              />
-              <Button variant="contained" onClick={handleUnlock} startIcon={<LockIcon />}>
-                Desbloquear
-              </Button>
-            </Stack>
-          </Box>
-        ) : (
-          <Box>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LockOpenIcon color="success" /> Editor Desbloqueado
-            </Typography>
-            {rolePrompts.map((role) => (
-              <Accordion key={role.role_name} sx={{ mt: 2 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>{roleLabels[role.role_name] || role.role_name}</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <TextField label={`Prompt Base para "${roleLabels[role.role_name]}"`} multiline rows={10} fullWidth value={role.base_prompt} onChange={(e) => handleRolePromptChange(role.role_name, e.target.value)} />
-                  <Button sx={{ mt: 2 }} variant="contained" onClick={() => handleSaveRolePrompt(role.role_name)} disabled={savingRole[role.role_name]}>
-                    {savingRole[role.role_name] ? <CircularProgress size={24} /> : `Guardar Comportamiento de ${roleLabels[role.role_name]}`}
-                  </Button>
-                </AccordionDetails>
-              </Accordion>
-            ))}
-          </Box>
-        )}
-      </Paper>
+      {/* Diálogo para crear una nueva actividad/rol */}
+      <Dialog open={newRoleDialogOpen} onClose={() => setNewRoleDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Crear Nueva Actividad de Agente</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Nombre de la Actividad (para el usuario)"
+              value={newRoleData.role_label}
+              onChange={(e) => setNewRoleData({ ...newRoleData, role_label: e.target.value })}
+              helperText="Ej: Asistente de Gimnasio"
+              fullWidth
+            />
+            <TextField
+              margin="dense"
+              label="Nombre Interno (automático)"
+              value={newRoleData.role_label.toLowerCase().replace(/\s+/g, '_')}
+              disabled
+              fullWidth
+              helperText="Se genera automáticamente para uso del sistema."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewRoleDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveNewRole} variant="contained" disabled={saving}>
+            {saving ? <CircularProgress size={24} /> : 'Crear y Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

@@ -15,7 +15,7 @@ import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'; // 
 import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import TopBar from './TopBar';
+import TopBar from '../components/TopBar'; // <-- ¡CORRECCIÓN CLAVE! Apuntamos al componente correcto.
 
 const WEBSOCKET_URL = 'ws://localhost:8080';
 

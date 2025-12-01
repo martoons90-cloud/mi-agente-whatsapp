@@ -1,36 +1,33 @@
 // src/components/ProductTable.jsx
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch,
-  Paper, IconButton, CircularProgress, Box, Typography, Alert,
+  Paper, IconButton, CircularProgress, Box, Typography, Alert, Chip,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-function ProductTable() {
+function ProductTable({ tableKey, onEdit }) { // Recibimos la key y la función de editar
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
+  const { selectedClientId } = useOutletContext(); // <-- ¡CAMBIO CLAVE!
 
   async function fetchProducts() {
     try {
       setLoading(true);
       setError(null);
-      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setError("No hay una sesión activa. Por favor, inicia sesión.");
-        setLoading(false);
-        return;
-      }
+      if (!selectedClientId) return;
+
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .eq('client_id', session.user.id) // <-- Usamos el ID de la sesión
+        .select('*, category:categories(name, color)')
+        .eq('client_id', selectedClientId) // <-- ¡CAMBIO CLAVE! Usamos el ID del cliente seleccionado
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -44,7 +41,7 @@ function ProductTable() {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [tableKey, selectedClientId]); // <-- ¡CAMBIO CLAVE! Se recarga cuando cambia la key o el cliente
 
   const openDeleteDialog = (product) => {
     setProductToDelete(product);
@@ -108,11 +105,12 @@ function ProductTable() {
         Inventario Actual
       </Typography>
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="simple table">
+        <Table sx={{ minWidth: 650 }} aria-label="simple table" size="small">
           <TableHead>
             <TableRow>
               <TableCell>ID</TableCell>
               <TableCell>Nombre</TableCell>
+              <TableCell>Categoría</TableCell>
               <TableCell>Descripción</TableCell>
               <TableCell align="right">Precio</TableCell>
               <TableCell>Unidad</TableCell>
@@ -126,6 +124,7 @@ function ProductTable() {
               <TableRow key={product.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell component="th" scope="row">{product.id}</TableCell>
                 <TableCell>{product.name}</TableCell>
+                <TableCell>{product.category ? <Chip label={product.category.name} style={{ backgroundColor: product.category.color, color: 'white' }} size="small" /> : <em>Sin categoría</em>}</TableCell>
                 <TableCell>{product.description}</TableCell>
                 <TableCell align="right">${product.price?.toFixed(2)}</TableCell>
                 <TableCell>{product.unit}</TableCell>
@@ -134,11 +133,12 @@ function ProductTable() {
                   <Switch
                     checked={product.is_active}
                     onChange={() => handleToggleActive(product)}
+                    size="small"
                     color="secondary"
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => alert('Función de editar no implementada aún.')}>
+                  <IconButton size="small" onClick={() => onEdit(product)}>
                     <EditIcon />
                   </IconButton>
                   <IconButton size="small" onClick={() => openDeleteDialog(product)}>

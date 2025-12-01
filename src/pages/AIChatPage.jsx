@@ -1,5 +1,6 @@
 // src/pages/AIChatPage.jsx
 import { useState, useEffect, useRef } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Box, TextField, Button, Paper, Typography, List, ListItem, ListItemText, CircularProgress, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -11,6 +12,7 @@ function AIChatPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const listEndRef = useRef(null);
+  const { selectedClientId } = useOutletContext();
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,15 +29,13 @@ function AIChatPage() {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
-      const botConfigId = session.user.id;
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado para probar.");
       
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           message: currentInput,
-          sessionId: `test-chat-${botConfigId}`, // Usamos un ID de sesión de prueba
-          clientId: botConfigId,
+          sessionId: `test-chat-${selectedClientId}`, // Usamos un ID de sesión de prueba
+          clientId: selectedClientId, // <-- ¡CAMBIO CLAVE!
           history: messages, // Pasamos el historial del chat de prueba
         },
       });

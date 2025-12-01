@@ -1,5 +1,6 @@
 // src/components/PaymentMethodsTable.jsx
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch,
@@ -12,21 +13,17 @@ function PaymentMethodsTable({ keyProp, onEdit }) {
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { selectedClientId } = useOutletContext(); // <-- ¡CAMBIO CLAVE!
 
   async function fetchMethods() {
     try {
       setLoading(true);
-      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setError("No hay una sesión activa. Por favor, inicia sesión.");
-        setLoading(false);
-        return;
-      }
+      if (!selectedClientId) return;
+
       const { data, error } = await supabase
         .from('payment_methods')
         .select('*')
-        .eq('client_id', session.user.id) // <-- Usamos el ID de la sesión
+        .eq('client_id', selectedClientId) // <-- ¡CAMBIO CLAVE! Usamos el ID del cliente seleccionado
         .order('id', { ascending: true });
 
       if (error) throw error;
@@ -40,7 +37,7 @@ function PaymentMethodsTable({ keyProp, onEdit }) {
 
   useEffect(() => {
     fetchMethods();
-  }, [keyProp]); // Se recarga cuando la key cambia
+  }, [keyProp, selectedClientId]); // Se recarga cuando la key o el cliente seleccionado cambian
 
   const handleToggleActive = async (method) => {
     try {
@@ -74,11 +71,12 @@ function PaymentMethodsTable({ keyProp, onEdit }) {
         Métodos de Pago
       </Typography>
       <TableContainer component={Paper}>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Nombre</TableCell>
               <TableCell align="right">Recargo (%)</TableCell>
+              <TableCell align="center">Vigencia</TableCell>
               <TableCell align="center">Activo</TableCell>
               <TableCell align="center">Acciones</TableCell>
             </TableRow>
@@ -89,9 +87,15 @@ function PaymentMethodsTable({ keyProp, onEdit }) {
                 <TableCell>{method.name}</TableCell>
                 <TableCell align="right">{method.surcharge_percentage}%</TableCell>
                 <TableCell align="center">
+                  {method.valid_until 
+                    ? new Date(method.valid_until).toLocaleDateString('es-AR', { timeZone: 'UTC' }) 
+                    : 'Indefinido'}
+                </TableCell>
+                <TableCell align="center">
                   <Switch
                     checked={method.is_active}
                     onChange={() => handleToggleActive(method)}
+                    size="small"
                     color="secondary"
                   />
                 </TableCell>

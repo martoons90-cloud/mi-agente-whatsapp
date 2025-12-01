@@ -9,15 +9,18 @@
  function PaymentMethodForm({ open, onClose, onSave, methodToEdit }) {
    const [name, setName] = useState('');
    const [surcharge, setSurcharge] = useState('');
+   const [validUntil, setValidUntil] = useState(''); // <-- NUEVO
  
    useEffect(() => {
      if (methodToEdit) {
        setName(methodToEdit.name);
        setSurcharge(methodToEdit.surcharge_percentage);
+       setValidUntil(methodToEdit.valid_until || ''); // <-- NUEVO
      } else {
        // Limpiar para un nuevo método
        setName('');
        setSurcharge('');
+       setValidUntil(''); // <-- NUEVO
      }
    }, [methodToEdit, open]);
  
@@ -31,6 +34,7 @@
        id: methodToEdit?.id, // Incluir id si estamos editando
        name,
        surcharge_percentage: parseFloat(surcharge) || 0,
+       valid_until: validUntil || null, // <-- NUEVO
      };
  
      onSave(paymentMethodData);
@@ -70,6 +74,16 @@
              variant="outlined"
              value={surcharge}
              onChange={(e) => setSurcharge(e.target.value)}
+           />
+           <TextField
+             label="Válido Hasta (Opcional)"
+             name="valid_until"
+             type="date"
+             fullWidth
+             variant="outlined"
+             value={validUntil}
+             onChange={(e) => setValidUntil(e.target.value)}
+             InputLabelProps={{ shrink: true }}
            />
          </Stack>
        </DialogContent>

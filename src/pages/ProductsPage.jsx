@@ -1,69 +1,125 @@
 // src/pages/ProductsPage.jsx
 import { useState } from 'react';
-import UploadCSV from '../components/UploadCSV.jsx';
+import { useOutletContext } from 'react-router-dom';
+import * as XLSX from 'xlsx'; // <-- ¡NUEVO! Importamos la librería para Excel
 import { Typography, Box, Button, Stack, Snackbar, Alert } from '@mui/material';
 import ProductTable from '../components/ProductTable.jsx';
 import ProductForm from '../components/ProductForm.jsx';
+import ProductImportDialog from '../components/ProductImportDialog.jsx'; // <-- ¡NUEVO!
+import DownloadIcon from '@mui/icons-material/Download'; // <-- ¡NUEVO!
 import { supabase } from '../supabaseClient.js';
 
 function ProductsPage() {
   // Creamos una clave que cambiará para forzar la recarga de la tabla
   const [tableKey, setTableKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false); // <-- ¡NUEVO!
+  const [productToEdit, setProductToEdit] = useState(null); // <-- ¡NUEVO! Para la edición
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext();
 
   const handleSaveProduct = async (productData) => {
     try {
-      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado, es más seguro.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
-      const clientId = session.user.id;
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
 
       // 1. Generar el embedding del producto
-      // ¡MEJORA! Añadimos etiquetas para darle más contexto al modelo de embeddings.
-      // Esto ayuda a la IA a diferenciar entre el nombre y la descripción, mejorando la precisión de la búsqueda.
-      const textToEmbed = `Nombre del producto: ${productData.name}. Descripción: ${productData.description || 'Sin descripción'}. Se vende por: ${productData.unit}.`.trim();
-      console.log("Paso 1: Intentando invocar la función 'generate-embedding' con el texto:", textToEmbed);
+      const textToEmbed = `Nombre del producto: ${productData.name}. Categoría: ${productData.category_name || 'Sin categoría'}. Descripción: ${productData.description || 'Sin descripción'}. Se vende por: ${productData.unit}.`.trim();
 
       const { data: embeddingData, error: embeddingError } = await supabase.functions.invoke('generate-embedding', {
         body: { text: textToEmbed },
       });
 
-      console.log("Paso 2: Respuesta recibida de la función.", { embeddingData, embeddingError });
       if (embeddingError) {
-        // Intenta obtener un mensaje de error más detallado del cuerpo de la respuesta
         const errorDetails = embeddingError.context?.error?.message || embeddingError.message;
-        console.error("Error detallado de la función 'generate-embedding':", embeddingError);
         throw new Error(`Error al generar el embedding: ${errorDetails}`);
       }
 
-      console.log("Paso 3: Embedding generado correctamente. Preparando para insertar en la base de datos.");
-      const productToInsert = {
-        ...productData,
-        client_id: clientId,
+      // ¡CORRECCIÓN CLAVE! Quitamos la propiedad temporal 'category_name' antes de guardar.
+      const { category_name, ...dataToSave } = productData;
+
+      const finalProductData = {
+        ...dataToSave,
+        client_id: selectedClientId,
         embedding: embeddingData.embedding, // <-- Añadimos el embedding
       };
 
-      // ¡LOG DE DEPURACIÓN CRÍTICO!
-      // Esto nos mostrará en la consola del navegador el objeto exacto que se va a guardar.
-      // Revisa si la propiedad "embedding" tiene un array de números o si es null.
-      console.log("Paso 4: Insertando el siguiente producto:", productToInsert);
-      // 2. Insertar el producto con su embedding
-      const { error } = await supabase
-        .from('products')
-        .insert([productToInsert]);
+      let error;
+      let successMessage;
 
-      if (error) {
-        throw new Error(`Error de Supabase: ${error.message}`);
+      if (finalProductData.id) {
+        // --- LÓGICA DE EDICIÓN ---
+        const { id, category, ...updateData } = finalProductData; // Excluimos 'category' que es un objeto relacional
+        ({ error } = await supabase.from('products').update(updateData).eq('id', id));
+        successMessage = '¡Producto actualizado con éxito!';
+      } else {
+        // --- LÓGICA DE CREACIÓN ---
+        const { id, ...insertData } = finalProductData;
+        ({ error } = await supabase.from('products').insert([insertData]));
+        successMessage = '¡Producto agregado con éxito!';
       }
 
-      setSnackbar({ open: true, message: '¡Producto agregado con éxito!', severity: 'success' });
-      console.log("Paso 5: Producto guardado con éxito.");
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(`El producto "${productData.name}" ya existe. No se puede agregar de nuevo.`);
+        }
+        throw error;
+      }
+
+      setSnackbar({ open: true, message: successMessage, severity: 'success' });
       setTableKey(prevKey => prevKey + 1); // Forzar recarga de la tabla
     } catch (error) {
-      console.error("FLUJO INTERRUMPIDO: Ocurrió un error en handleSaveProduct:", error);
-      setSnackbar({ open: true, message: `Error al agregar el producto: ${error.message}`, severity: 'error' });
+      setSnackbar({ open: true, message: `Error al guardar el producto: ${error.message}`, severity: 'error' });
     }
+  };
+
+  const handleImport = async (productsToImport) => {
+    try {
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
+
+      // ¡CAMBIO CLAVE! Pasamos el client_id a la función para que sepa a quién pertenecen los productos.
+      const { data, error } = await supabase.functions.invoke('import-products', {
+        body: { 
+          products: productsToImport,
+          clientId: selectedClientId 
+        },
+      });
+
+      if (error) throw error;
+
+      setSnackbar({ open: true, message: data.message || '¡Productos importados con éxito!', severity: 'success' });
+      setTableKey(prevKey => prevKey + 1); // Forzar recarga de la tabla
+    } catch (error) {
+      setSnackbar({ open: true, message: `Error al importar productos: ${error.message}`, severity: 'error' });
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
+
+      const { data: products, error } = await supabase
+        .from('products')
+        .select('id,name,category,description,price,stock,unit') // <-- ¡CAMBIO CLAVE! Incluimos la categoría.
+        .eq('client_id', selectedClientId);
+
+      if (error) throw error;
+
+      // ¡CAMBIO CLAVE! Generamos un archivo Excel en lugar de CSV
+      const worksheet = XLSX.utils.json_to_sheet(products);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Productos");
+
+      // Disparamos la descarga del archivo .xlsx
+      XLSX.writeFile(workbook, "catalogo_productos.xlsx");
+
+    } catch (error) {
+      setSnackbar({ open: true, message: `Error al exportar: ${error.message}`, severity: 'error' });
+    }
+  };
+
+  const handleOpenForm = (product = null) => {
+    setProductToEdit(product);
+    setFormOpen(true);
   };
 
   return (
@@ -73,15 +129,18 @@ function ProductsPage() {
           Gestión de Productos
         </Typography>
         <Stack direction="row" spacing={2}>
-          {/* <UploadCSV onUploadComplete={() => setTableKey(prevKey => prevKey + 1)} /> */}
-          <Button variant="contained" color="secondary" onClick={() => setFormOpen(true)}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>Exportar a Excel</Button>
+          <Button variant="outlined" onClick={() => setImportDialogOpen(true)}>Importar</Button>
+          <Button variant="contained" color="secondary" onClick={() => handleOpenForm()}>
             Agregar Producto
           </Button>
         </Stack>
       </Box>
-      <ProductTable key={tableKey} /> {/* Usamos la clave para forzar la recarga */}
+      <ProductTable tableKey={tableKey} onEdit={handleOpenForm} /> {/* Pasamos la key y la función de editar */}
 
-      <ProductForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSaveProduct} />
+      <ProductForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSaveProduct} productToEdit={productToEdit} />
+
+      <ProductImportDialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} onImport={handleImport} />
 
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>

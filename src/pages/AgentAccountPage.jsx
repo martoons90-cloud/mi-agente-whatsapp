@@ -1,5 +1,6 @@
 // c:\Users\Martin\mi-agente-whatsapp\src\pages\AgentAccountPage.jsx
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Box, Typography, Paper, TextField, Button,
   CircularProgress, Alert, Snackbar, Stack, IconButton, InputAdornment
@@ -9,42 +10,25 @@ import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import { supabase } from '../supabaseClient'; // Importamos la instancia centralizada de supabase
 
 function AgentAccountPage() {
-  const [clientId, setClientId] = useState(null); // ID del cliente (user.id)
   const [account, setAccount] = useState({ name: '', gemini_api_key: '', role: 'product_seller', bot_phone_number: '' });
   const [isNewClient, setIsNewClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext(); // <-- ¡CAMBIO CLAVE!
 
   useEffect(() => {
     const fetchAccountData = async () => {
+      if (!selectedClientId) return;
       setLoading(true);
       setError(null);
-
-      // Obtenemos la sesión del usuario para sacar su ID
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        setError('Error al obtener la sesión de usuario.');
-        setLoading(false);
-        return;
-      }
-
-      if (!session) {
-        // Esto no debería pasar si la ruta está protegida, pero por si acaso.
-        setError('No hay una sesión activa. Por favor, inicia sesión.');
-        setLoading(false);
-        return;
-      }
-
-      const currentUserId = session.user.id;
-      setClientId(currentUserId);
+      setAccount({ name: '', gemini_api_key: '', role: 'product_seller', bot_phone_number: '' }); // Reset
 
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('name, gemini_api_key, bot_phone_number')
-          .eq('id', currentUserId)
+          .select('name, gemini_api_key, bot_phone_number, agent_role')
+          .eq('id', selectedClientId) // <-- ¡CAMBIO CLAVE!
           .single();
 
         // Si hay un error y no es porque no encontró la fila, lo lanzamos
@@ -56,7 +40,8 @@ function AgentAccountPage() {
           setAccount({ 
             name: data.name, 
             gemini_api_key: data.gemini_api_key, 
-            bot_phone_number: data.bot_phone_number || ''
+            bot_phone_number: data.bot_phone_number || '',
+            role: data.agent_role || 'product_seller'
           });
           setIsNewClient(false);
         } else {
@@ -72,7 +57,7 @@ function AgentAccountPage() {
     };
 
     fetchAccountData();
-  }, []);
+  }, [selectedClientId]); // <-- ¡CAMBIO CLAVE!
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
@@ -102,9 +87,10 @@ function AgentAccountPage() {
         const { error } = await supabase
           .from('clients')
           .insert({ 
-            id: clientId, // Usamos el ID del usuario como ID del cliente
+            id: selectedClientId, // <-- ¡CAMBIO CLAVE!
             name: account.name, 
             gemini_api_key: account.gemini_api_key,
+            agent_role: account.role, // <-- ¡AÑADIDO! Asignamos el rol del agente.
             bot_phone_number: account.bot_phone_number.replace(/\D/g, '') // Guardamos solo los números
           })
 
@@ -119,9 +105,10 @@ function AgentAccountPage() {
           .update({ 
             name: account.name, 
             gemini_api_key: account.gemini_api_key, 
-            bot_phone_number: account.bot_phone_number.replace(/\D/g, '')
+            bot_phone_number: account.bot_phone_number.replace(/\D/g, ''),
+            // El rol del agente se cambia en la página de "Prompt"
           })
-          .eq('id', clientId);
+          .eq('id', selectedClientId); // <-- ¡CAMBIO CLAVE!
         if (error) throw error;
         showSnackbar('¡Datos de la cuenta guardados con éxito!', 'success');
       }
@@ -134,7 +121,7 @@ function AgentAccountPage() {
   };
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(clientId);
+    navigator.clipboard.writeText(selectedClientId);
     showSnackbar('ID de Negocio copiado al portapapeles.', 'info');
   };
 
@@ -159,10 +146,10 @@ function AgentAccountPage() {
       ) : (
         <Box component="form" onSubmit={handleSaveChanges}>
           <Stack spacing={3}>
-            {clientId && !isNewClient && (
+            {selectedClientId && !isNewClient && (
                 <TextField
                     label="ID de Negocio"
-                    value={clientId}
+                    value={selectedClientId}
                     fullWidth
                     InputProps={{ readOnly: true }}
                     helperText="Este es el identificador único de tu negocio en el sistema."

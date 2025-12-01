@@ -10,6 +10,7 @@ const initialState = {
   title: '',
   description: '',
   related_keywords: '',
+  valid_until: '', // <-- NUEVO
 };
 
 function OfferForm({ open, onClose, onSave, offerToEdit }) {
@@ -22,6 +23,7 @@ function OfferForm({ open, onClose, onSave, offerToEdit }) {
         title: offerToEdit.title || '',
         description: offerToEdit.description || '',
         related_keywords: offerToEdit.related_keywords || '',
+        valid_until: offerToEdit.valid_until || '', // <-- NUEVO
       });
     } else {
       setOffer(initialState);
@@ -38,7 +40,10 @@ function OfferForm({ open, onClose, onSave, offerToEdit }) {
       alert('El título y la descripción son obligatorios.');
       return;
     }
-    onSave(offer);
+    // Si la fecha está vacía, la enviamos como null a la base de datos
+    const offerToSave = { ...offer, valid_until: offer.valid_until || null };
+
+    onSave(offerToSave);
     onClose();
   };
 
@@ -57,6 +62,16 @@ function OfferForm({ open, onClose, onSave, offerToEdit }) {
           <TextField autoFocus label="Título de la Oferta" name="title" type="text" fullWidth variant="outlined" value={offer.title} onChange={handleChange} required />
           <TextField label="Descripción Detallada" name="description" type="text" fullWidth multiline rows={4} variant="outlined" value={offer.description} onChange={handleChange} required />
           <TextField label="Palabras Clave (separadas por comas)" name="related_keywords" type="text" fullWidth variant="outlined" value={offer.related_keywords} onChange={handleChange} helperText="Ej: descuento, 2x1, envío gratis, liquidación" />
+          <TextField
+            label="Válido Hasta (Opcional)"
+            name="valid_until"
+            type="date"
+            fullWidth
+            variant="outlined"
+            value={offer.valid_until}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+          />
         </Stack>
       </DialogContent>
       <DialogActions>

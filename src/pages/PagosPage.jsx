@@ -1,5 +1,6 @@
 // src/pages/PagosPage.jsx
 import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { Typography, Box, Button, Stack, Snackbar, Alert } from '@mui/material';
 import PaymentMethodsTable from '../components/PaymentMethodsTable.jsx';
 import PaymentMethodForm from '../components/PaymentMethodForm.jsx';
@@ -10,6 +11,7 @@ function PagosPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [methodToEdit, setMethodToEdit] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext();
 
   const handleOpenForm = (method = null) => {
     setMethodToEdit(method);
@@ -18,23 +20,18 @@ function PagosPage() {
 
   const handleSaveMethod = async (methodData) => {
     try {
-      // ¡CORRECCIÓN! Obtenemos el ID del usuario logueado de forma segura desde la sesión.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error("No hay una sesión activa. Por favor, inicia sesión.");
-      }
-      const clientId = session.user.id;
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
 
       let error;
       if (methodData.id) {
         // Editar método existente
         // Separamos el 'id' del resto de los datos para no intentar actualizarlo.
         const { id, ...updateData } = methodData;
-        ({ error } = await supabase.from('payment_methods').update({ ...updateData, client_id: clientId }).eq('id', id));
+        ({ error } = await supabase.from('payment_methods').update({ ...updateData, client_id: selectedClientId }).eq('id', id));
       } else {
         // Crear nuevo método
         const { id, ...insertData } = methodData; // Quitar el id si viene nulo
-        ({ error } = await supabase.from('payment_methods').insert([{ ...insertData, client_id: clientId, is_active: true }]));
+        ({ error } = await supabase.from('payment_methods').insert([{ ...insertData, client_id: selectedClientId, is_active: true }]));
       }
 
       if (error) throw error;
@@ -56,7 +53,7 @@ function PagosPage() {
           Agregar Método de Pago
         </Button>
       </Box>
-      <PaymentMethodsTable keyProp={tableKey} onEdit={handleOpenForm} />
+      <PaymentMethodsTable key={`${tableKey}-${selectedClientId}`} onEdit={handleOpenForm} />
       <PaymentMethodForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSaveMethod} methodToEdit={methodToEdit} />
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>

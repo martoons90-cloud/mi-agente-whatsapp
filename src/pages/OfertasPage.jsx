@@ -1,5 +1,6 @@
 // src/pages/OfertasPage.jsx
 import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { Typography, Box, Button, Snackbar, Alert } from '@mui/material';
 import OffersTable from '../components/OffersTable.jsx';
 import OfferForm from '../components/OfferForm.jsx';
@@ -10,6 +11,7 @@ function OfertasPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [offerToEdit, setOfferToEdit] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext();
 
   const handleOpenForm = (offer = null) => {
     setOfferToEdit(offer);
@@ -18,17 +20,15 @@ function OfertasPage() {
 
   const handleSaveOffer = async (offerData) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay una sesión activa.");
-      const clientId = session.user.id;
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
 
       let error;
       if (offerData.id) {
         const { id, ...updateData } = offerData;
-        ({ error } = await supabase.from('offers').update({ ...updateData, client_id: clientId }).eq('id', id));
+        ({ error } = await supabase.from('offers').update({ ...updateData, client_id: selectedClientId }).eq('id', id));
       } else {
         const { id, ...insertData } = offerData;
-        ({ error } = await supabase.from('offers').insert([{ ...insertData, client_id: clientId, is_active: true }]));
+        ({ error } = await supabase.from('offers').insert([{ ...insertData, client_id: selectedClientId, is_active: true }]));
       }
 
       if (error) throw error;
@@ -50,7 +50,7 @@ function OfertasPage() {
           Crear Oferta
         </Button>
       </Box>
-      <OffersTable key={tableKey} onEdit={handleOpenForm} onRefresh={() => setTableKey(prevKey => prevKey + 1)} />
+      <OffersTable tableKey={tableKey} onEdit={handleOpenForm} />
       <OfferForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSaveOffer} offerToEdit={offerToEdit} />
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
