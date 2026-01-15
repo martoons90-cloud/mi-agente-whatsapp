@@ -1,0 +1,155 @@
+{
+  "creds": {
+    "noiseKey": {
+      "private": {
+        "type": "Buffer",
+        "data": "AJQT3qfL25SEhxw4eNneOYcZRRsqjneQWKCC3tnPz2w="
+      },
+      "public": {
+        "type": "Buffer",
+        "data": "txbYlScYaBJx3ihGFvz+/7Dmos2VUwMqdw5T87Zljzo="
+      }
+    },
+    "pairingEphemeralKeyPair": {
+      "private": {
+        "type": "Buffer",
+        "data": "QGlpSDD44ZWfCIuhcrvDorsBDF9JyCVtcMvUuBkSsFs="
+      },
+      "public": {
+        "type": "Buffer",
+        "data": "+IoIc7Dy14dlJFEjBArtT3d6WKiz4Rb7P9Fn437TKVE="
+      }
+    },
+    "signedIdentityKey": {
+      "private": {
+        "type": "Buffer",
+        "data": "UFvw5vUqIy49IJfPUl0I74yCxMyk8yAZZLMNvXxyUEA="
+      },
+      "public": {
+        "type": "Buffer",
+        "data": "SNxe9ioD26++p//sskl8spIlV6zgUVKQaAgwKXxPkAM="
+      }
+    },
+    "signedPreKey": {
+      "keyPair": {
+        "private": {
+          "type": "Buffer",
+          "data": "4P274n0LWCT3Eg581DHouAH/VMmOSTyhIuQs3X3+CEs="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "RBBZz4xtHBKmNhApebl6NUQGT2BINyJGebtVSL1ehjY="
+        }
+      },
+      "signature": {
+        "type": "Buffer",
+        "data": "RozvWQU++p+lFaOrNi92UKIdSLdXZ8sxOLU9iWhy4eUsunWzFoHkSpIfOc61SGBYG7/tMhsb5lfYnkjdkDCqjQ=="
+      },
+      "keyId": 1
+    },
+    "registrationId": 204,
+    "advSecretKey": "wpUvHgNgyMBUOhnr0SCao+wxtKujPrN9gfIJcJ+tR/0=",
+    "processedHistoryMessages": [],
+    "nextPreKeyId": 946,
+    "firstUnuploadedPreKeyId": 946,
+    "accountSyncCounter": 0,
+    "accountSettings": {
+      "unarchiveChats": false
+    },
+    "registered": false,
+    "account": {
+      "details": "CMK469UBEPj50cgGGAkgACgA",
+      "accountSignatureKey": "+S9WF5v64DYwZ62KwoZU8OqTiEFdiCca6iANuvZOYkw=",
+      "accountSignature": "V9vIWQbqBjiU9AJdqZlyZD11+1GDBsk8CMnl8gyf7tDMn4eGR0xqDEiyYdYAEBKe98Be9ZxuCMdX/nSWDLrYBQ==",
+      "deviceSignature": "8g098GFIwEy+cRr41POakzIaEYhNj0o6lEUkOhI4fmhaxcI4KFpvvY3Ue4uoWdxfGChzy6KAUO46jgL6qaDuiw=="
+    },
+    "me": {
+      "id": "5493884622199:39@s.whatsapp.net",
+      "lid": "18808148385935:39@lid",
+      "name": "Martin"
+    },
+    "signalIdentities": [
+      {
+        "identifier": {
+          "name": "18808148385935:39@lid",
+          "deviceId": 0
+        },
+        "identifierKey": {
+          "type": "Buffer",
+          "data": "BfkvVheb+uA2MGetisKGVPDqk4hBXYgnGuogDbr2TmJM"
+        }
+      }
+    ],
+    "platform": "android",
+    "routingInfo": {
+      "type": "Buffer",
+      "data": "CAUIDQgI"
+    },
+    "lastAccountSyncTimestamp": 1762950763,
+    "lastPropHash": "3R9Z39"
+  },
+  "keys": {
+    "pre-key": {
+      "941": {
+        "private": {
+          "type": "Buffer",
+          "data": "wL7svz0253bcdinDMi5xiar9Iyt6Vu9kUlQeIqI5r3U="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "9XeeiNP14t6LE/RR10Ur2PSkSSwe5WHKxCmOxaZNW0U="
+        }
+      },
+      "942": {
+        "private": {
+          "type": "Buffer",
+          "data": "OD1SVe/FLwNakD8P08A2lQgBs2ZxPinmZFrUBePvslw="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "QxlTEmikoyH6JR5lRuJOSHYrrGA+h1SMYKtm3wlGSDg="
+        }
+      },
+      "943": {
+        "private": {
+          "type": "Buffer",
+          "data": "MJFT19gQmb7jKTSUpvAdTV+ojL/zFj5PBxKo9M8tIm8="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "nPUhyHFcGGATc6YZtvaa1SJSWjgYY3bKTxJP2peR9i8="
+        }
+      },
+      "944": {
+        "private": {
+          "type": "Buffer",
+          "data": "UGb0d5vlCftNF4hLLtaHyx6XcrBFQLXRl4DgTnDu8Uw="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "cU4B1ZYt3PC0NVKlfsNMiw0UYK7k/DN2JldvVYij8Ds="
+        }
+      },
+      "945": {
+        "private": {
+          "type": "Buffer",
+          "data": "IFZD6h89IvyIvqkyoo/UyBLf7DTXSTzmyc1YNz23oGc="
+        },
+        "public": {
+          "type": "Buffer",
+          "data": "q2sG2zvO9VHN6TOT5FW7MZEaPgC3hJS3vG0qrhT6sRA="
+        }
+      }
+    },
+    "app-state-sync-version": {
+      "regular_low": null
+    },
+    "session": {
+      "5493884622199.0": null
+    },
+    "lid-mapping": {
+      "5493884622199": "18808148385935",
+      "18808148385935_reverse": "5493884622199"
+    }
+  }
+}

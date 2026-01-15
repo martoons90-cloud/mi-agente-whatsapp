@@ -1,0 +1,26 @@
+/* Eliminamos todos los estilos por defecto. 
+   Material-UI y CssBaseline se encargarán de todo. */
+
+/* --- Scrollbar Inteligente y Sutil --- */
+
+/* Para navegadores WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px; /* Ancho de la barra */
+  height: 8px; /* Alto para scroll horizontal */
+}
+
+/* El "track" o fondo de la barra de scroll */
+::-webkit-scrollbar-track {
+  background: transparent; /* Hacemos el fondo invisible */
+}
+
+/* El "thumb" o la parte móvil de la barra */
+::-webkit-scrollbar-thumb {
+  background: #cccccc; /* Un gris claro */
+  border-radius: 4px;
+}
+
+/* El thumb cuando pasas el mouse por encima */
+::-webkit-scrollbar-thumb:hover {
+  background: #aaaaaa; /* Un poco más oscuro al pasar el mouse */
+}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prueba de Conexión Directa</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h1>Prueba de Conexión Directa (Navegador -> MercadoLibre)</h1>
+    <p>Esta prueba verifica si tu navegador puede conectarse directamente a MercadoLibre usando tu VPN.</p>
+    <button onclick="runTest()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">EJECUTAR PRUEBA</button>
+    <div id="status" style="margin-top: 20px; font-weight: bold;">Esperando...</div>
+    <pre id="log" style="background: #f0f0f0; padding: 10px; margin-top: 10px; border: 1px solid #ccc; white-space: pre-wrap;"></pre>
+
+    <script>
+        async function runTest() {
+            const logEl = document.getElementById('log');
+            const statusEl = document.getElementById('status');
+            
+            function log(msg) {
+                logEl.textContent += msg + '\n';
+                console.log(msg);
+            }
+
+            logEl.textContent = '';
+            statusEl.textContent = 'Probando...';
+            statusEl.style.color = 'blue';
+
+            try {
+                log('Iniciando fetch a https://api.mercadolibre.com/sites/MLA/search?category=MLA1744 ...');
+                const response = await fetch('https://api.mercadolibre.com/sites/MLA/search?category=MLA1744');
+                
+                log('Response Status: ' + response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('Data recibida. Longitud: ' + JSON.stringify(data).length);
+                    statusEl.textContent = '✅ ÉXITO: Tu navegador TIENE acceso directo (Luz Verde).';
+                    statusEl.style.color = 'green';
+                } else {
+                    log('Error HTTP: ' + response.statusText);
+                    statusEl.textContent = '❌ FALLO: MercadoLibre rechazó la conexión (' + response.status + ').';
+                    statusEl.style.color = 'red';
+                }
+            } catch (error) {
+                log('Excepción JS: ' + error.message);
+                if (error.message.includes('Failed to fetch')) {
+                    statusEl.textContent = '❌ FALLO por CORS o Red. (Probablemente CORS).';
+                } else {
+                     statusEl.textContent = '❌ FALLO: ' + error.message;
+                }
+                statusEl.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>

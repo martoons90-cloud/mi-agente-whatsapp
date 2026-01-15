@@ -1,0 +1,64 @@
+// src/pages/PagosPage.jsx
+import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { Typography, Box, Button, Stack, Snackbar, Alert } from '@mui/material';
+import PaymentMethodsTable from '../components/PaymentMethodsTable.jsx';
+import PaymentMethodForm from '../components/PaymentMethodForm.jsx';
+import { supabase } from '../supabaseClient.js';
+
+function PagosPage() {
+  const [tableKey, setTableKey] = useState(0);
+  const [formOpen, setFormOpen] = useState(false);
+  const [methodToEdit, setMethodToEdit] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { selectedClientId } = useOutletContext();
+
+  const handleOpenForm = (method = null) => {
+    setMethodToEdit(method);
+    setFormOpen(true);
+  };
+
+  const handleSaveMethod = async (methodData) => {
+    try {
+      if (!selectedClientId) throw new Error("No hay un cliente seleccionado.");
+
+      let error;
+      if (methodData.id) {
+        // Editar método existente
+        // Separamos el 'id' del resto de los datos para no intentar actualizarlo.
+        const { id, ...updateData } = methodData;
+        ({ error } = await supabase.from('payment_methods').update({ ...updateData, client_id: selectedClientId }).eq('id', id));
+      } else {
+        // Crear nuevo método
+        const { id, ...insertData } = methodData; // Quitar el id si viene nulo
+        ({ error } = await supabase.from('payment_methods').insert([{ ...insertData, client_id: selectedClientId, is_active: true }]));
+      }
+
+      if (error) throw error;
+
+      setSnackbar({ open: true, message: '¡Método de pago guardado con éxito!', severity: 'success' });
+      setTableKey(prevKey => prevKey + 1); // Forzar recarga de la tabla
+    } catch (error) {
+      setSnackbar({ open: true, message: `Error al guardar: ${error.message}`, severity: 'error' });
+    }
+  };
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4" component="h1">
+          Métodos de Pago
+        </Typography>
+        <Button variant="contained" color="secondary" onClick={() => handleOpenForm()}>
+          Agregar Método de Pago
+        </Button>
+      </Box>
+      <PaymentMethodsTable key={`${tableKey}-${selectedClientId}`} onEdit={handleOpenForm} />
+      <PaymentMethodForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSaveMethod} methodToEdit={methodToEdit} />
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
+      </Snackbar>
+    </>
+  );
+}
+export default PagosPage;
