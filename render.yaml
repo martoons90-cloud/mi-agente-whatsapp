@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: whatsapp-backend
+    env: node
+    plan: free
+    buildCommand: cd whatsapp-gateway && npm install
+    startCommand: cd whatsapp-gateway && node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ML_APP_ID
+        sync: false
+      - key: ML_CLIENT_SECRET
+        sync: false
+      - key: ML_REDIRECT_URI
+        sync: false
+      - key: SESSION_DIR
+        value: ./session_data
