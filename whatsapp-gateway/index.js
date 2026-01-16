@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const {
   SUPABASE_URL = 'https://gljqujylxootxmzsuogp.supabase.co',
   SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsanF1anlseG9vdHhtenN1b2dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NTc2MDQsImV4cCI6MjA3ODIzMzYwNH0.nyTMuATxLb_QJD5ZLJQo6dOCSCnR2wGmVxLmFWiEEG8',
-  WEBSOCKET_PORT = 8081,
+  WEBSOCKET_PORT = process.env.PORT || 8081,
   SESSION_DIR = './session_data',
   ML_APP_ID,
   ML_CLIENT_SECRET,
@@ -286,10 +286,20 @@ app.get('/api/ml/versions', async (req, res) => {
 // Create HTTP Server
 const server = createServer(app);
 
+// --- HEALTH CHECK (CRITICAL FOR RENDER) ---
+app.get('/', (req, res) => res.send('WhatsApp Gateway is Running 🚀'));
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/api/health', (req, res) => res.status(200).send('OK'));
+
 // Initialize WebSocket on the same server
 const wss = new WebSocketServer({ server });
 
 console.log(`[SERVER] Servidor HTTP y WebSocket iniciando...`);
+
+// START SERVER IMMEDIATELY (Before Baileys)
+server.listen(WEBSOCKET_PORT, '0.0.0.0', () => {
+  console.log(`[SERVER] Escuchando en el puerto ${WEBSOCKET_PORT}`);
+});
 
 // --- MEMORIA DE CONVERSACIÓN ---
 const conversationHistories = new Map();
@@ -392,8 +402,6 @@ async function startSock() {
   });
 }
 
-startSock();
+// startSock(); // DISABLED TEMPORARILY FOR RENDER STABILITY
 
-server.listen(WEBSOCKET_PORT, () => {
-  console.log(`[SERVER] Escuchando en el puerto ${WEBSOCKET_PORT}`);
-});
+// server.listen moved to top

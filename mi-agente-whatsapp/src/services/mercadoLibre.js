@@ -1,6 +1,8 @@
 import { popularBrands, popularModels, commonVersions } from '../data/argentinaCars';
 
-const API_BASE_URL = 'http://localhost:8081/api/ml';
+import { config } from '../config';
+
+const API_BASE_URL = `${config.apiBaseUrl}/api/ml`;
 
 // Helper to fetch via AllOrigins Public Proxy
 const fetchViaProxy = async (targetUrl) => {
@@ -58,29 +60,20 @@ export const MercadoLibreService = {
                 console.warn('Public Proxy failed:', proxyError);
             }
 
-            // 4. MOCK MODE (Final Safety Net for blocked IPs)
-            // console.warn('Network blocked & Mock Mode DISABLED. Returning empty list.');
-            // return [];
+            // 4. MOCK MODE (DISABLED For Verification)
+            console.warn('Network blocked & Mock Mode DISABLED. Returning empty list.');
+            return [];
 
+            /*
             console.warn('Network blocked. Activating MOCK MODE.');
             const mockBrands = [
                 { id: 'VOLKSWAGEN', name: 'Volkswagen' },
                 { id: 'FORD', name: 'Ford' },
-                { id: 'CHEVROLET', name: 'Chevrolet' },
-                { id: 'TOYOTA', name: 'Toyota' },
-                { id: 'FIAT', name: 'Fiat' },
-                { id: 'PEUGEOT', name: 'Peugeot' },
-                { id: 'RENAULT', name: 'Renault' },
-                { id: 'HONDA', name: 'Honda' },
-                { id: 'CITROEN', name: 'Citroën' },
-                { id: 'JEEP', name: 'Jeep' },
-                { id: 'NISSAN', name: 'Nissan' },
-                { id: 'MERCEDES_BENZ', name: 'Mercedes-Benz' },
-                { id: 'BMW', name: 'BMW' },
-                { id: 'AUDI', name: 'Audi' }
+                // ...
             ].sort((a, b) => a.name.localeCompare(b.name));
             mockBrands._source = 'api-mock';
             return mockBrands;
+            */
         }
     },
 
@@ -117,15 +110,16 @@ export const MercadoLibreService = {
                 }
             } catch (e) { }
 
-            // 4. Mock Mode (Fallback to Static)
-            // return []; 
-
+            // 4. Mock Mode (DISABLED For Verification)
+            return [];
+            /*
             const staticModelData = popularModels[brandId] || [];
             if (staticModelData.length > 0) {
                 staticModelData._source = 'api-mock';
                 return staticModelData;
             }
             return [];
+            */
 
         }
     },
@@ -180,12 +174,13 @@ export const MercadoLibreService = {
                 }
             } catch (e) { }
 
-            // 4. Mock Mode
-            // return [];
-
+            // 4. Mock Mode (DISABLED FOR VERIFICATION)
+            return [];
+            /*
             const staticVersions = commonVersions.map(v => ({ id: v, name: v }));
             staticVersions._source = 'api-mock';
             return staticVersions;
+            */
 
         }
     },
