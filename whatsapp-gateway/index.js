@@ -121,20 +121,28 @@ const USER_AGENTS = [
 
 const getRandomHeaders = () => {
   return {
-    'User-Agent': USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)],
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
-    'Cache-Control': 'max-age=0',
-    'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Windows"',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Upgrade-Insecure-Requests': '1'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': 'application/json'
   };
 };
+
+const PROXY_URL = `${SUPABASE_URL}/functions/v1/ml-proxy`;
+
+async function fetchFromML(path, params, headers = {}) {
+  // Construct the query string for the real API
+  const queryString = new URLSearchParams(params).toString();
+
+  console.log(`[API] Routing via Supabase Proxy: ${path}?${queryString}`);
+
+  // Call the Proxy
+  return axios.get(PROXY_URL, {
+    params: {
+      path: path,
+      query: queryString
+    },
+    headers: headers
+  });
+}
 
 // Proxy Route for MercadoLibre
 // Proxy Route for MercadoLibre
@@ -149,10 +157,7 @@ app.get('/api/ml/brands', async (req, res) => {
       console.log('[API] No hay token, usando modo anónimo.');
     }
 
-    const response = await axios.get('https://api.mercadolibre.com/sites/MLA/search', {
-      params: { category: 'MLA1744' },
-      headers: headers
-    });
+    const response = await fetchFromML('sites/MLA/search', { category: 'MLA1744' }, headers);
 
     console.log('[API] ✅ Respuesta exitosa de ML (Intento 1).');
 
@@ -169,10 +174,7 @@ app.get('/api/ml/brands', async (req, res) => {
       console.warn('[API] 🔄 Reintentando ANÓNIMAMENTE (sin token)...');
       try {
         const cleanHeaders = getRandomHeaders();
-        const response = await axios.get('https://api.mercadolibre.com/sites/MLA/search', {
-          params: { category: 'MLA1744' },
-          headers: cleanHeaders
-        });
+        const response = await fetchFromML('sites/MLA/search', { category: 'MLA1744' }, cleanHeaders);
 
         console.log('[API] ✅ Respuesta exitosa en REINTENTO anónimo.');
 
@@ -214,10 +216,7 @@ app.get('/api/ml/models', async (req, res) => {
       headers['Authorization'] = `Bearer ${mlTokens.access_token}`;
     }
 
-    const response = await axios.get('https://api.mercadolibre.com/sites/MLA/search', {
-      params: { category: 'MLA1744', BRAND: brandId },
-      headers: headers
-    });
+    const response = await fetchFromML('sites/MLA/search', { category: 'MLA1744', BRAND: brandId }, headers);
 
     const modelFilter = response.data.available_filters.find(f => f.id === 'MODEL');
     if (!modelFilter) return res.json([]);
@@ -251,10 +250,7 @@ app.get('/api/ml/versions', async (req, res) => {
       params.VEHICLE_YEAR = yearId;
     }
 
-    const response = await axios.get('https://api.mercadolibre.com/sites/MLA/search', {
-      params: params,
-      headers: headers
-    });
+    const response = await fetchFromML('sites/MLA/search', params, headers);
 
     let versions = [];
     // Prioritize specific version filters
